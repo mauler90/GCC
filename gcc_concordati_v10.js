@@ -166,9 +166,9 @@
   //  SYNC — PULL + MERGE + PUSH
   // ═══════════════════════════════════════════════
 
-  function sincronizza() {
+  function sincronizza(dopoSync) {
     var token = localStorage.getItem(LS_TOKEN);
-    if (!token) { apriConfigSync(); return; }
+    if (!token) { apriConfigSync(); if (dopoSync) dopoSync(); return; }
     panel.style.display = 'none';
     statoDiv.innerHTML = '<span style="color:#e67e22">&#x23F3; Sync in corso...</span>';
 
@@ -213,10 +213,10 @@
       fuse.forEach(function(f) { localRows[f.indice] = f.rigaFusa; });
 
       if (conflitti.length === 0) {
-        _applicaESalva(localRows.concat(aggiunte), token, aggiunte.length, fuse.length, ignorati);
+        _applicaESalva(localRows.concat(aggiunte), token, aggiunte.length, fuse.length, ignorati, dopoSync);
       } else {
         window._gccSyncCallback = function(merged) {
-          _applicaESalva(merged, token, aggiunte.length, fuse.length, ignorati);
+          _applicaESalva(merged, token, aggiunte.length, fuse.length, ignorati, dopoSync);
           delete window._gccSyncCallback;
         };
         apriConflictResolver(conflitti, localRows, aggiunte, fuse.length, ignorati, 'Locale', 'Remoto', true);
@@ -225,10 +225,11 @@
     .catch(function(err) {
       if (err.message !== 'skip') alert('Errore sync: ' + err.message);
       aggiornaStato();
+      if (dopoSync) dopoSync();
     });
   }
 
-  function _applicaESalva(merged, token, nAggiunte, nFuse, nIgnorati) {
+  function _applicaESalva(merged, token, nAggiunte, nFuse, nIgnorati, dopoSalva) {
     localStorage.setItem(LS_LISTINO, JSON.stringify({ rows:merged, filename:'GCC', loaded_at:new Date().toISOString() }));
     aggiornaStato();
     var content = JSON.stringify({ rows:merged, updated_at:new Date().toISOString() }, null, 2);
@@ -244,10 +245,11 @@
       if (nFuse)     msg += 'Fuse (complementari): ' + nFuse + '\n';
       if (nIgnorati) msg += 'Identiche (ignorate): ' + nIgnorati + '\n';
       msg += 'Totale: ' + merged.length + ' tariffe';
-      alert(msg);
+      if (dopoSalva) dopoSalva(); else alert(msg);
     })
     .catch(function(err) {
       alert('Sync locale OK, push fallito: ' + err.message + '\nRiprova il sync.');
+      if (dopoSalva) dopoSalva();
     });
   }
 
@@ -516,6 +518,15 @@
   // ═══════════════════════════════════════════════
 
   function eseguiMatch(){
+    var token = localStorage.getItem(LS_TOKEN);
+    if (token) {
+      sincronizza(function() { _eseguiMatchCore(); });
+    } else {
+      _eseguiMatchCore();
+    }
+  }
+
+  function _eseguiMatchCore(){
     var raw=localStorage.getItem(LS_LISTINO);
     if(!raw){ alert('Nessun listino caricato.'); return; }
     var listino=JSON.parse(raw).rows;

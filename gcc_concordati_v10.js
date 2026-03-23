@@ -239,20 +239,15 @@
     })
     .then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      var msg = 'Sync completato!
-';
-      if (nAggiunte) msg += 'Ricevute: ' + nAggiunte + '
-';
-      if (nFuse)     msg += 'Fuse (complementari): ' + nFuse + '
-';
-      if (nIgnorati) msg += 'Identiche (ignorate): ' + nIgnorati + '
-';
+      var msg = 'Sync completato!\n';
+      if (nAggiunte) msg += 'Ricevute: ' + nAggiunte + '\n';
+      if (nFuse)     msg += 'Fuse (complementari): ' + nFuse + '\n';
+      if (nIgnorati) msg += 'Identiche (ignorate): ' + nIgnorati + '\n';
       msg += 'Totale: ' + merged.length + ' tariffe';
       alert(msg);
     })
     .catch(function(err) {
-      alert('Sync locale OK, push fallito: ' + err.message + '
-Riprova il sync.');
+      alert('Sync locale OK, push fallito: ' + err.message + '\nRiprova il sync.');
     });
   }
 

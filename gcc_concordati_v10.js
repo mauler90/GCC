@@ -718,6 +718,8 @@
         '});'+
         'var elD=document.getElementById("f-data-validita");'+
         'elD.value=r.data_validita||_dataOggi;'+
+        'var elOp3=document.getElementById("f-operatore");'+
+        'if(elOp3)elOp3.value=r.operatore||"";'+
         'if(r.fuel&&r.fuel.toUpperCase()==="SI")_mFuelOn=true;'+
         'var tog=document.getElementById("m-fuel-tog");'+
         'tog.textContent=_mFuelOn?"SI":"NO";tog.classList.toggle("on",_mFuelOn);'+
@@ -731,6 +733,8 @@
         'TRATTA_FLDS.concat(COSTO_FLDS).forEach(function(f){var el=document.getElementById(fid(f));r[f]=el?el.value.trim():"";});'+
         'r.data_validita=document.getElementById("f-data-validita").value.trim();'+
         'r.fuel=_mFuelOn?"SI":"NO";r.fuel_perc="";'+
+        'var elOp2=document.getElementById("f-operatore");'+
+        'r.operatore=elOp2?elOp2.value.trim().toUpperCase():"";'+
         /* FIX: avviso porto non italiano */
         'if(r.porto_riferimento && !r.porto_riferimento.toLowerCase().startsWith("it")){'+
           'if(!confirm("Il porto \\""+r.porto_riferimento+"\\" non \u00e8 un porto italiano (dovrebbe iniziare con IT, es. ITLIV).\\nVuoi salvare comunque?"))return;'+
@@ -805,7 +809,7 @@
       '<th>#</th><th>Traffic</th><th>Committente</th><th>Luogo 1</th><th>Luogo 2</th>'+
       '<th>Delivery Place</th><th>Porto</th><th>20\'</th><th>40\'</th><th>HC</th>'+
       '<th>Cong.</th><th>Ex.Stop</th><th>S.Notte</th><th>All.RF</th><th>ADR</th>'+
-      '<th>Fuel</th><th>Note</th><th>Validit\u00e0</th><th>Azioni</th>';
+      '<th>Fuel</th><th>Note</th><th>Validit\u00e0</th><th>Op.</th><th>Azioni</th>';
 
     var popup = window.open('','tcp_gestione','width=1280,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
@@ -859,6 +863,7 @@
           '<\/div>'+
           '<div class="mbtns">'+
             '<label class="ldata">Data Validit\u00e0<input type="text" id="f-data-validita" maxlength="8" placeholder="DD/MM/YY"><\/label>'+
+            '<label class="ldata" style="width:70px">Operatore<input type="text" id="f-operatore" maxlength="5" placeholder="es. MR" style="text-transform:uppercase"><\/label>'+
             '<button class="btn-cancel" id="btn-annulla">Annulla<\/button>'+
             '<button class="btn-save" id="btn-salva">&#x1F4BE; Salva<\/button>'+
           '<\/div>'+
@@ -940,18 +945,35 @@
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
       '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
-    // thCols per mancanti: invariato da v9.1
-    var thCols =
-      '<th>LEF / Order ID</th><th>Indirizzi</th><th>Delivery Place</th>' +
-      '<th>Committente</th><th>Traffic</th><th>Container Nr</th>' +
-      '<th>Tipo</th><th>Porto</th><th>Costo</th><th>Note</th><th>Validita</th><th class="no-print">Nav</th>';
+    // ── Raggruppa mancanti per tratta + taglia (stesso criterio trovati) ──
+    var mGruppiMap = {};
+    var mGruppiOrdine = [];
+    mancanti.forEach(function(r){
+      var ct = r.containerType;
+      var equipKey = ct.size+(ct.isHC?'hc':'');
+      var chiave = [norm(r.indirizzi[0]||''),norm(r.indirizzi[1]||''),
+                    norm(r.delivery_place),norm(r.porto),norm(r.traffic),norm(r.committente)].join('||');
+      var gKey = chiave+'||'+equipKey;
+      if(!mGruppiMap[gKey]){
+        mGruppiMap[gKey] = {
+          gKey:gKey, chiave:chiave, equipKey:equipKey,
+          equip:equipLabel(ct), containerType:ct,
+          indirizzi:r.indirizzi, delivery_place:r.delivery_place,
+          committente:r.committente, traffic:r.traffic, porto:r.porto,
+          containers:[]
+        };
+        mGruppiOrdine.push(gKey);
+      }
+      mGruppiMap[gKey].containers.push({
+        containerNr:r.containerNr, containerTypeRaw:r.containerTypeRaw,
+        lef:r.lef, orderId:r.orderId
+      });
+    });
 
-    function cellLEF(lef, orderId){
-      return '<td>' +
-        '<div style="font-weight:bold;font-size:12px;color:#1a5276">'+(lef||'—')+'</div>' +
-        '<div style="font-size:10px;color:#999;margin-top:1px">'+orderId+'</div>' +
-        '</td>';
-    }
+    var thCols =
+      '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
+      '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
+      '<th>Costo</th><th>Note</th><th>Validità</th><th class="no-print">Azioni</th>';
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -993,28 +1015,32 @@
         '</tr>';
     });
 
-    // mancanti: identico a v9.1
     var htmlMancanti='';
-    mancanti.forEach(function(r,idx){
+    mGruppiOrdine.forEach(function(gKey, mgi){
+      var g = mGruppiMap[gKey];
+      var n = g.containers.length;
+      var ctrsJson = JSON.stringify(g.containers).replace(/"/g,'&quot;');
       htmlMancanti+=
-        '<tr id="mrow_'+idx+'">'+
-        cellLEF(r.lef, r.orderId)+
-        '<td>'+r.indirizzi.join(' \u2192 ')+'</td>'+
-        '<td>'+r.delivery_place+'</td>'+
-        '<td>'+r.committente+'</td>'+
-        '<td>'+r.traffic+'</td>'+
-        '<td>'+r.containerNr+'</td>'+
-        '<td>'+r.containerTypeRaw+'</td>'+
-        '<td>'+r.porto.toUpperCase()+'</td>'+
-        '<td id="mcosto_'+idx+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
-        '<td style="font-size:11px;color:#888" id="mnote_'+idx+'"></td>'+
-        '<td style="color:#aaa;font-size:11px" id="mdata_'+idx+'"></td>'+
+        '<tr id="mrow_'+mgi+'">'+
+        '<td>'+
+          '<button class="btn-ctr-badge-m" data-mgi="'+mgi+'" data-ctrs="'+ctrsJson+'" '+
+            'style="padding:4px 10px;border:none;background:#c0392b;color:white;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;white-space:nowrap;">'+
+            '&#x1F4E6; '+n+(n===1?' container':' containers')+
+          '<\/button>'+
+        '</td>'+
+        '<td><span style="display:inline-block;background:#fde8e8;color:#c0392b;font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;">'+g.equip+'<\/span><\/td>'+
+        '<td>'+g.indirizzi.join(' \u2192 ')+'</td>'+
+        '<td>'+g.delivery_place+'</td>'+
+        '<td>'+g.committente+'</td>'+
+        '<td>'+g.traffic+'</td>'+
+        '<td>'+g.porto.toUpperCase()+'</td>'+
+        '<td id="mcosto_'+mgi+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
+        '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
+        '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
         '<td class="no-print" style="white-space:nowrap">'+
-          '<button data-idx="'+idx+'" class="btn-ins" '+
+          '<button data-mgi="'+mgi+'" class="btn-ins" '+
             'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">'+
             '&#x270F;<\/button>'+
-          '<button class="btn-nav-scroll" data-orderid="'+r.orderId+'" data-containernr="'+r.containerNr+'" title="Vai alla riga" '+
-            'style="padding:3px 7px;border:none;background:#2980b9;color:white;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">&#x1F50D;<\/button>'+
         '</td>'+
         '</tr>';
     });
@@ -1081,7 +1107,8 @@
         '#print-header{display:block!important}'+
         'tr:hover td{background:white!important}'+
         'th{background:#1a5276!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-        '.warn-section{display:none!important}'+
+        /* warn-section ora stampabile */
+      ''+
       '}'+
       '#print-header{display:none;margin-bottom:16px;border-bottom:2px solid #1a5276;padding-bottom:8px}'+
       '#print-header h2{margin:0 0 2px;color:#1a5276;font-size:18px}'+
@@ -1091,6 +1118,7 @@
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
     var scriptData=
       'var _mancanti='+JSON.stringify(mancanti)+';'+
+      'var _mGruppi='+JSON.stringify(mGruppiOrdine.map(function(k){ return mGruppiMap[k]; }))+';'+
       'var _trovati='+JSON.stringify(trovati)+';'+
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
@@ -1244,7 +1272,26 @@
       '}'+
       'function chiudiDropdown(){'+
         'document.getElementById("ctr-dropdown").classList.remove("show");'+
+        'document.getElementById("ctr-dropdown-m").classList.remove("show");'+
         '_ddOpen=false;'+
+      '}'+
+      'function apriDropdownM(btn){'+
+        'var dd=document.getElementById("ctr-dropdown-m");'+
+        'var list=document.getElementById("ctr-dropdown-m-list");'+
+        'var mgi=parseInt(btn.dataset.mgi);'+
+        'var ctrs=_mGruppi[mgi].containers;'+
+        'var html_m="";'+
+        'ctrs.forEach(function(c){'+
+          'html_m+=\'<div class=\"ctr-item\"><span class=\"ctr-nr\">\'+c.containerNr+\'</span>\';'+
+          'html_m+=\'<span class=\"ctr-lef\">\'+(c.lef||c.orderId)+\'</span>\';'+
+          'html_m+=\'<button class=\"ctr-nav btn-nav-scroll\" data-orderid=\"\'+c.orderId+\'\" data-containernr=\"\'+c.containerNr+\'\">&#x1F50D; Vai<\/button><\/div>\';'+
+        '});'+
+        'list.innerHTML=html_m;'+
+        'var rect=btn.getBoundingClientRect();'+
+        'dd.style.top=(rect.bottom+6)+"px";'+
+        'dd.style.left=Math.min(rect.left,window.innerWidth-340)+"px";'+
+        'dd.classList.add("show");'+
+        '_ddOpen=true;'+
       '}'+
       'document.addEventListener("click",function(e){'+
         'if(e.target.classList.contains("btn-ctr-badge")){'+
@@ -1258,7 +1305,8 @@
 
       /* ── delegazione click globale ── */
       'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.idx));}'+
+        'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.mgi));}'+
+        'if(e.target.classList.contains("btn-ctr-badge-m")){apriDropdownM(e.target);}'+
         'if(e.target.classList.contains("btn-nav-scroll")){scrollToOrder(e.target.dataset.orderid,e.target.dataset.containernr);}'+
         'if(e.target.classList.contains("btn-modifica")){apriModaleModifica(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
         'if(e.target.classList.contains("btn-cancella")){cancellaRigaTrovati(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
@@ -1321,20 +1369,23 @@
         'if(tr)tr.parentNode.removeChild(tr);'+
       '}'+
 
-      /* ── apri modale INSERIMENTO (mancanti) ── */
-      'function apriModale(idx){'+
-        '_idxCorrente=idx;_mFuelOn=false;'+
+      /* ── apri modale INSERIMENTO (mancanti) — usa gruppo ── */
+      'function apriModale(mgi){'+
+        '_idxCorrente=mgi;_mFuelOn=false;'+
         '_modalMode="nuovo";'+
-        'var r=_mancanti[idx];'+
+        'var g=_mGruppi[mgi];'+
         'document.getElementById("modale-titolo").textContent="Inserisci tariffa";'+
-        'document.getElementById("modale-sub").textContent=(r.lef||r.orderId)+" \u2014 "+(r.indirizzi||[]).join(" \u2192 ")+" \u2014 "+r.containerTypeRaw;'+
+        'var desc=g.indirizzi.join(" \u2192 ")+" \u2014 "+g.delivery_place+" \u2014 "+g.equip;'+
+        'if(g.containers.length>1)desc+=" ("+g.containers.length+" containers)";'+
+        'document.getElementById("modale-sub").textContent=desc;'+
         'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note"];'+
-        'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)el.value=(r._edit&&r._edit[f])||"";});'+
+        'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)el.value=(g._edit&&g._edit[f])||"";});'+
         'var elData=document.getElementById("f_data_validita");'+
-        'elData.value=(r._edit&&r._edit.data_validita)?r._edit.data_validita:_dataOggi;'+
-        'if(r._edit&&r._edit.fuel==="SI"){_mFuelOn=true;}'+
+        'elData.value=(g._edit&&g._edit.data_validita)?g._edit.data_validita:_dataOggi;'+
+        'if(g._edit&&g._edit.fuel==="SI"){_mFuelOn=true;}'+
         'var t=document.getElementById("m-fuel-toggle");'+
         't.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'+
+        'var elOp=document.getElementById("f_operatore");if(elOp)elOp.value=(g._edit&&g._edit.operatore)||"";'+
         'document.getElementById("overlay").classList.add("show");'+
       '}'+
 
@@ -1372,7 +1423,8 @@
           'adr:edit.adr||"",' +
           'fuel:edit.fuel,fuel_perc:"",' +
           'note:edit.note||"",' +
-          'data_validita:edit.data_validita||""'+
+          'data_validita:edit.data_validita||"",' +
+          'operatore:edit.operatore||""'+
         '};'+
         'try{'+
           'var lsRaw=localStorage.getItem(_LS_LISTINO);'+
@@ -1405,6 +1457,8 @@
         'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","data_validita","note"];'+
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
+        'var elOp=document.getElementById("f_operatore");'+
+        'edit.operatore=(elOp?elOp.value.trim().toUpperCase():"");'+
         'try{'+
           'var lsRaw=localStorage.getItem(_LS_LISTINO);'+
           'if(lsRaw){'+
@@ -1416,6 +1470,7 @@
               'if(k===chiave){'+
                 'flds.forEach(function(f){lsData.rows[i][f]=edit[f]||"";});'+
                 'lsData.rows[i].fuel=edit.fuel;'+
+                'lsData.rows[i].operatore=edit.operatore||"";'+
               '}'+
             '});'+
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
@@ -1499,6 +1554,7 @@
       '<\/div>'+
 
       '<div id="ctr-dropdown"><div id="ctr-dropdown-title">Containers<\/div><div id="ctr-dropdown-list"><\/div><\/div>'+
+      '<div id="ctr-dropdown-m" style="display:none;position:fixed;z-index:99999;background:white;border:1px solid #d0d7de;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.18);min-width:320px;max-width:480px;padding:6px 0;font-family:Arial,sans-serif;"><div id="ctr-dropdown-m-list"><\/div><\/div>'+
 
       '<div id="overlay">'+
         '<div id="modale">'+
@@ -1524,6 +1580,9 @@
           '<div class="modal-btns">'+
             '<label style="font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px;margin-right:auto">'+
               'Data Validita<input type="text" id="f_data_validita" maxlength="8" placeholder="DD/MM/YY" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:90px">'+
+            '<\/label>'+
+            '<label style="font-size:11px;color:#555;font-weight:bold;display:flex;flex-direction:column;gap:3px;">'+
+              'Operatore<input type="text" id="f_operatore" maxlength="5" placeholder="es. MR" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:60px;text-transform:uppercase">'+
             '<\/label>'+
             '<button class="btn-cancel" id="btn-annulla">Annulla<\/button>'+
             '<button class="btn-save" id="btn-salva">&#x1F4BE; Salva<\/button>'+

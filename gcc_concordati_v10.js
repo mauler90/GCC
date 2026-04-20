@@ -664,6 +664,7 @@
       'function initDLs(){populateDL("dl-comm",_sugg.committenti);populateDL("dl-luoghi",_sugg.luoghi);populateDL("dl-deliv",_sugg.delivery_places);populateDL("dl-porti",_sugg.porti);}'+
       'function addSugg(key,dlId,val){val=(val||"").trim();if(!val)return;if(_sugg[key].indexOf(val)===-1){_sugg[key].push(val);populateDL(dlId,_sugg[key]);}}'+
 
+'function pushGistGL(rows){var tok=localStorage.getItem(\"tcp_gcc_token\");if(!tok)return;fetch(\"https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5\",{method:\"PATCH\",headers:{\"Authorization\":\"token \"+tok,\"Content-Type\":\"application/json\"},body:JSON.stringify({files:{\"tcp_listino.json\":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       'function renderTable(){'+
         'var filter=(document.getElementById("search").value||"").toLowerCase();'+
         'var html="";var count=0;'+
@@ -694,6 +695,7 @@
         'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" tariffe";'+
       '}'+
 
+'function pushGist(rows){var tok=localStorage.getItem(\"tcp_gcc_token\");if(!tok)return;fetch(\"https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5\",{method:\"PATCH\",headers:{\"Authorization\":\"token \"+tok,\"Content-Type\":\"application/json\"},body:JSON.stringify({files:{\"tcp_listino.json\":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})}).catch(function(){});}'+
       'function initDataInput(el){'+
         'el.addEventListener("input",function(){'+
           'var v=this.value.replace(/[^0-9]/g,"");var out="";'+
@@ -753,7 +755,7 @@
       'function cancellaRiga(idx){'+
         'if(!confirm("Cancellare questa tariffa dal listino?"))return;'+
         '_rows.splice(idx,1);'+
-        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}'+
+        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;localStorage.setItem(_LS,JSON.stringify(d));pushGistGL(_rows);}catch(e){}'+
         'renderTable();'+
       '}'+
 
@@ -1345,8 +1347,8 @@
             'localStorage.setItem(_LS_LISTINO,JSON.stringify(lsData));'+
           '}'+
         '}catch(e){alert("Errore cancellazione: "+e.message);return;}'+
-        'var tr=document.getElementById("trow_"+gi);'+
-        'if(tr)tr.parentNode.removeChild(tr);'+
+        'var tr=document.getElementById("trow_"+gi);if(tr)tr.parentNode.removeChild(tr);'+
+        'try{var _pd=JSON.parse(localStorage.getItem(_LS_LISTINO)||"{}")||{};pushGist(_pd.rows||[]);}catch(_pe){}'+
       '}'+
 
       /* ── apri modale INSERIMENTO (mancanti) ── */

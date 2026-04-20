@@ -15,6 +15,12 @@
   var LS_TOKEN     = 'tcp_gcc_token';
   var GIST_ID      = '93f3fe07c908d94f152c56ad805202f5';
   var GIST_FILE    = 'tcp_listino.json';
+  var LS_LISTINO_BASE  = 'tcp_listino_base';
+  var LS_VETTORI       = 'tcp_vettori';
+  var LS_ADDIZIONALI   = 'tcp_addizionali';
+  var GIST_FILE_BASE   = 'tcp_listino_base.json';
+  var GIST_FILE_VETT   = 'tcp_vettori.json';
+  var GIST_FILE_ADD    = 'tcp_addizionali.json';
 
   // ═══════════════════════════════════════════════
   //  FLOATING BUTTON
@@ -66,6 +72,9 @@
   panel.appendChild(makeBtn('&#x2601; Sync Listino',         '#2980b9', sincronizza));
   panel.appendChild(makeBtn('&#x1F4CB; Gestisci Listino',    '#16a085', apriGestioneListino));
   panel.appendChild(makeBtn('&#x1F50D; Calcola Concordati',  '#27ae60', eseguiMatch));
+  panel.appendChild(makeBtn('&#x1F4CA; Listino Base',         '#8e44ad', apriGestioneListinoBase));
+  panel.appendChild(makeBtn('&#x1F69A; Gestisci Vettori',     '#d35400', apriGestioneVettori));
+  panel.appendChild(makeBtn('&#x2795; Addizionali Vettori',   '#c0392b', apriGestioneAddizionali));
   panel.appendChild(makeBtn('&#x2699; Configura Sync',       '#7f8c8d', apriConfigSync));
   document.body.appendChild(panel);
 
@@ -73,13 +82,18 @@
     var raw = localStorage.getItem(LS_LISTINO);
     var info = raw ? JSON.parse(raw) : null;
     var token = localStorage.getItem(LS_TOKEN);
+    var rawBase = localStorage.getItem(LS_LISTINO_BASE);
+    var infoBase = rawBase ? JSON.parse(rawBase) : null;
     var listinoHtml = info
-      ? '<span style="color:green">&#x2705; '+info.rows.length+' tariffe</span>'
+      ? '<span style="color:green">&#x2705; '+info.rows.length+' concordati</span>'
       : '<span style="color:#c0392b">&#x274C; Nessun listino</span>';
+    var baseHtml = infoBase
+      ? ' &mdash; <span style="color:#8e44ad">&#x1F4CA; '+infoBase.rows.length+' prezzi base</span>'
+      : '';
     var tokenHtml = token
       ? '<span style="color:green"> &mdash; &#x1F511; Token OK</span>'
       : '<span style="color:#e67e22"> &mdash; &#x26A0; Token mancante</span>';
-    statoDiv.innerHTML = listinoHtml + tokenHtml;
+    statoDiv.innerHTML = listinoHtml + baseHtml + tokenHtml;
   }
 
   btn.addEventListener('click', function(e){
@@ -233,6 +247,14 @@
     localStorage.setItem(LS_LISTINO, JSON.stringify({ rows:merged, filename:'GCC', loaded_at:new Date().toISOString() }));
     aggiornaStato();
     var content = JSON.stringify({ rows:merged, updated_at:new Date().toISOString() }, null, 2);
+    // Leggi anche gli altri file dal Gist durante il sync
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      headers: { 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json' }
+    }).then(function(r2){ return r2.json(); }).then(function(gd){
+      var bf = gd.files[GIST_FILE_BASE]; if(bf) { try { localStorage.setItem(LS_LISTINO_BASE, bf.content); } catch(e){} }
+      var vf = gd.files[GIST_FILE_VETT]; if(vf) { try { localStorage.setItem(LS_VETTORI, vf.content); } catch(e){} }
+      var af = gd.files[GIST_FILE_ADD];  if(af) { try { localStorage.setItem(LS_ADDIZIONALI, af.content); } catch(e){} }
+    }).catch(function(){});
     fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
@@ -595,6 +617,215 @@
     return sugg;
   }
 
+
+  // ═══════════════════════════════════════════════
+  //  PUSH GIST GENERICO
+  // ═══════════════════════════════════════════════
+
+  function pushGistFile(fileName, data) {
+    var token = localStorage.getItem(LS_TOKEN);
+    if (!token) return;
+    var files = {};
+    files[fileName] = { content: JSON.stringify(data, null, 2) };
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+      body: JSON.stringify({ files: files })
+    }).catch(function(e){ console.warn('Push Gist fallito:', e); });
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  GESTISCI LISTINO BASE
+  // ═══════════════════════════════════════════════
+
+  function apriGestioneListinoBase() {
+    panel.style.display = 'none';
+    var raw = localStorage.getItem(LS_LISTINO_BASE);
+    var lsData = raw ? JSON.parse(raw) : { rows: [], loaded_at: null };
+    var rows = lsData.rows || [];
+
+    var css =
+      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'+
+      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}'+
+      '#topbar h2{margin:0;font-size:14px;white-space:nowrap}'+
+      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}'+
+      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:220px}'+
+      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}'+
+      '#btn-carica{background:#27ae60;color:white}'+
+      '#btn-export{background:#16a085;color:white}'+
+      '#btn-clear{background:#c0392b;color:white}'+
+      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}'+
+      'table{width:100%;border-collapse:collapse;font-size:11px}'+
+      'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}'+
+      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}'+
+      'tr:hover td{background:#f5eef8}'+
+      '.tc{color:#8e44ad;font-weight:bold}'+
+      '.tna{color:#ddd}'+
+      '#nrows{font-size:11px;color:#888;margin-top:8px}'+
+      '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
+
+    var scriptData =
+      'var _rows='+JSON.stringify(rows)+';'+
+      'var _LS='+JSON.stringify(LS_LISTINO_BASE)+';'+
+
+      'function renderTable(){'+
+        'var filter=(document.getElementById("search").value||"").toLowerCase();'+
+        'var html="";var count=0;'+
+        '_rows.forEach(function(r,i){'+
+          'var s=[r.porto,r.localita,r.provincia,r.cap].join(" ").toLowerCase();'+
+          'if(filter&&!s.includes(filter))return;'+
+          'count++;'+
+          'function v(f){return(r[f]||"");}'+
+          'function tc(f){return r[f]?"<td style=\"color:#8e44ad;font-weight:bold\">"+r[f]+"</td>":"<td style=\"color:#ddd\">-</td>";}'+
+          'html+="<tr>";'+
+          'html+="<td style=\\\"font-weight:bold;color:#8e44ad\\\">"+v("porto").toUpperCase()+"</td>";'+
+          'html+="<td>"+v("cap")+"</td>";'+
+          'html+="<td>"+v("provincia")+"</td>";'+
+          'html+="<td style=\\\"font-weight:bold\\\">"+v("localita")+"</td>";'+
+          'html+="<td>"+v("km")+"</td>";'+
+          'html+=tc("costo_20");html+=tc("costo_40");html+=tc("costo_hc");'+
+          'html+=tc("reefer");html+=tc("adr");html+=tc("seconda_presa");'+
+          'html+=tc("soste");html+=tc("notte");html+=tc("vgm");'+
+          'html+="<td><button onclick=\'cancellaRiga("+i+")\' style=\'padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px\'>&#x1F5D1;</button></td>";'+
+          'html+="</tr>";'+
+        '});'+
+        'document.getElementById("tbody").innerHTML=html;'+
+        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" tariffe";'+
+      '}'+
+
+      'function cancellaRiga(idx){'+
+        'if(!confirm("Cancellare questa riga dal listino base?"))return;'+
+        '_rows.splice(idx,1);'+
+        'salvaLocale();renderTable();'+
+        'pushGistBase(_rows);'+
+      '}'+
+
+      'function salvaLocale(){'+
+        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}'+
+      '}'+
+
+      'function pushGistBase(rows){'+
+        'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;'+
+        'fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",'+
+        'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'+
+        'body:JSON.stringify({files:{"tcp_listino_base.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})'+
+        '}).catch(function(){});'+
+      '}'+
+
+      'document.getElementById("search").addEventListener("input",renderTable);'+
+      'document.addEventListener("click",function(e){'+
+        'if(e.target.classList.contains("bd")){cancellaRiga(parseInt(e.target.dataset.i));}'+
+        'if(e.target.id==="btn-clear"){if(confirm("Cancellare tutto il listino base?")){_rows=[];salvaLocale();pushGistBase([]);renderTable();}}'+
+        'if(e.target.id==="btn-export"){esportaBase();}'+
+      '});'+
+
+      'function esportaBase(){'+
+        'var hdr=[["porto","cap","provincia","localita","km","costo_20","costo_40","costo_hc","reefer","adr","seconda_presa","soste","notte","vgm"]];'+
+        '_rows.forEach(function(r){hdr.push([r.porto||"",r.cap||"",r.provincia||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||"",r.reefer||"",r.adr||"",r.seconda_presa||"",r.soste||"",r.notte||"",r.vgm||""]);});'+
+        'var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"Listino Base");'+
+        'XLSX.writeFile(wb,"listino_base_"+new Date().toISOString().slice(0,10)+".xlsx");'+
+      '}'+
+
+      'renderTable();';
+
+    var thH =
+      '<th>Porto</th><th>CAP</th><th>Prov</th><th>Località</th><th>KM</th>'+
+      '<th>20\'</th><th>40\'</th><th>HC</th><th>Reefer</th><th>ADR</th>'+
+      '<th>2ª Presa</th><th>Soste</th><th>Notte</th><th>VGM</th><th>Del</th>';
+
+    var popup = window.open('','gcc_listino_base','width=1280,height=720,scrollbars=yes,resizable=yes');
+    popup.document.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Listino Base<\/title>'+
+      '<style>'+css+'<\/style><\/head><body>'+
+      '<div id="topbar">'+
+        '<h2>&#x1F4CA; Gestisci Listino Base<\/h2>'+
+        '<div id="topbar-right">'+
+          '<input id="search" placeholder="&#x1F50D; Filtra per porto, località...">'+
+          '<button class="btn-top" id="btn-carica">&#x1F4C2; Carica Excel<\/button>'+
+          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta<\/button>'+
+          '<button class="btn-top" id="btn-clear">&#x1F5D1; Svuota<\/button>'+
+        '<\/div>'+
+      '<\/div>'+
+      '<div id="table-wrap">'+
+        '<table><thead><tr>'+thH+'<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>'+
+        '<div id="nrows"><\/div>'+
+      '<\/div>'+
+      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
+      '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
+      '<scr'+'ipt>'+
+      // Carica Excel multi-sheet
+      '(function(){'+
+        'var inp=document.createElement("input");inp.type="file";inp.accept=".xlsx,.xls";inp.style.display="none";document.body.appendChild(inp);'+
+        'inp.addEventListener("change",function(){'+
+          'var f=inp.files[0];if(!f)return;'+
+          'var r=new FileReader();'+
+          'r.onload=function(ev){'+
+            'try{'+
+              'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'+
+              'var nuove=[];'+
+              // Ogni sheet = un porto
+              'wb.SheetNames.forEach(function(sheetName){'+
+                'var portoRaw=sheetName.trim().toUpperCase();'+
+                // Mappa nomi sheet → codici porto
+                'var portoMap={"LIVORNO":"ITLIV","GENOVA":"ITGOA","LA SPEZIA":"ITSPE","SPEZIA":"ITSPE",'+
+                  '"VADO":"ITVAD","TRIESTE":"ITTRS","VENEZIA":"ITVCE","RAVENNA":"ITRNA",'+
+                  '"ANCONA":"ITANC","CIVITAVECCHIA":"ITCVV"};'+
+                'var porto=portoMap[portoRaw]||portoRaw;'+
+                'var rows2=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:""});'+
+                'rows2.forEach(function(row){'+
+                  // Normalizza nomi colonne (flessibile)
+                  'var r2={porto:porto};'+
+                  'Object.keys(row).forEach(function(k){'+
+                    'var kl=k.toLowerCase().trim();'+
+                    'if(kl==="cap")r2.cap=String(row[k]);'+
+                    'else if(kl==="pro"||kl==="prov"||kl==="provincia")r2.provincia=String(row[k]);'+
+                    'else if(kl==="localita"||kl==="località"||kl==="luogo")r2.localita=String(row[k]);'+
+                    'else if(kl==="dist km a"||kl==="km"||kl==="dist_km")r2.km=parseFloat(row[k])||0;'+
+                    'else if(kl.startsWith("20"))r2.costo_20=String(row[k]);'+
+                    'else if(kl.startsWith("40"))r2.costo_40=String(row[k]);'+
+                    'else if(kl==="reefer")r2.reefer=String(row[k]);'+
+                    'else if(kl==="adr")r2.adr=String(row[k]);'+
+                    'else if(kl==="2ª presa"||kl==="seconda_presa"||kl==="2a presa")r2.seconda_presa=String(row[k]);'+
+                    'else if(kl==="soste"||kl==="sosta")r2.soste=String(row[k]);'+
+                    'else if(kl==="notte"||kl==="s.notte")r2.notte=String(row[k]);'+
+                    'else if(kl==="vgm")r2.vgm=String(row[k]);'+
+                  '});'+
+                  'if(r2.localita)nuove.push(r2);'+
+                '});'+
+              '});'+
+              '_rows=_rows.concat(nuove);'+
+              'salvaLocale();'+
+              'pushGistBase(_rows);'+
+              'renderTable();'+
+              'alert("Importate "+nuove.length+" tariffe da "+wb.SheetNames.length+" porti.");'+
+            '}catch(err){alert("Errore lettura: "+err.message);}'+
+          '};'+
+          'r.readAsArrayBuffer(f);'+
+        '});'+
+        'document.getElementById("btn-carica").addEventListener("click",function(){inp.value="";inp.click();});'+
+      '})();'+
+      '<\/scr'+'ipt>'+
+      '<\/body><\/html>'
+    );
+    popup.document.close();
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  GESTISCI VETTORI (in sviluppo)
+  // ═══════════════════════════════════════════════
+
+  function apriGestioneVettori() {
+    panel.style.display = 'none';
+    alert('Funzione Gestisci Vettori in arrivo nel prossimo aggiornamento.');
+  }
+
+  function apriGestioneAddizionali() {
+    panel.style.display = 'none';
+    alert('Funzione Addizionali Vettori in arrivo nel prossimo aggiornamento.');
+  }
+
   // ═══════════════════════════════════════════════
   //  GESTIONE LISTINO — POPUP COMPLETO
   // ═══════════════════════════════════════════════
@@ -673,7 +904,7 @@
           'if(filter&&!s.includes(filter))return;'+
           'count++;'+
           'function v(f){return(r[f]||"");}'+
-          'function tc(f){return r[f]?"<td class=\'tc\'>"+r[f]+"</td>":"<td class=\'tna\'>-</td>";}'+
+          'function tc(f){return r[f]?"<td class=\"tc\">"+r[f]+"</td>":"<td class=\"tna\">-</td>";}'+
           'html+="<tr>";'+
           'html+="<td style=\'color:#aaa;font-size:10px\'>"+i+"</td>";'+
           'html+="<td style=\'font-weight:bold\'>"+v("traffic_type")+"</td>";'+

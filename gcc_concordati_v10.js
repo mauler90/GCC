@@ -87,8 +87,8 @@
     var listinoHtml = info
       ? '<span style="color:green">&#x2705; '+info.rows.length+' concordati</span>'
       : '<span style="color:#c0392b">&#x274C; Nessun listino</span>';
-    var baseHtml = infoBase
-      ? ' &mdash; <span style="color:#8e44ad">&#x1F4CA; '+infoBase.rows.length+' prezzi base</span>'
+    var baseHtml = (infoBase && infoBase.rows)
+      ? ' &mdash; <span style="color:#8e44ad">&#x1F4CA; '+(infoBase.rows.length)+' prezzi base</span>'
       : '';
     var tokenHtml = token
       ? '<span style="color:green"> &mdash; &#x1F511; Token OK</span>'
@@ -724,8 +724,8 @@
               'else if(kl==="pro"||kl==="prov"||kl==="provincia")r.provincia=String(row[k]);' +
               'else if(kl.indexOf("local")===0||kl==="luogo")r.localita=String(row[k]);' +
               'else if(kl.indexOf("dist")===0||kl==="km")r.km=String(row[k]);' +
-              'else if(kl==="20")r.costo_20=String(row[k]);' +
-              'else if(kl.indexOf("40")===0)r.costo_40=String(row[k]);' +
+              'else if(kl.startsWith("20")&&kl.indexOf("hc")===-1)r.costo_20=String(row[k]);' +
+              'else if(kl.startsWith("40")&&kl.indexOf("hc")===-1)r.costo_40=String(row[k]);' +
             '});' +
             'if(r.localita&&r.localita.trim())nuove.push(r);' +
           '});' +
@@ -810,7 +810,82 @@
 
   function apriGestioneAddizionali() {
     panel.style.display = 'none';
-    alert('Funzione Addizionali Vettori in arrivo nel prossimo aggiornamento.');
+    var raw = localStorage.getItem(LS_ADDIZIONALI);
+    var add = raw ? JSON.parse(raw) : {};
+
+    // Valori di default se non ancora configurati
+    var defaults = {
+      hc: { label: 'Supplemento HC', valore: '', tipo: 'eur' },
+      reefer_perc: { label: 'Reefer %', valore: '', tipo: 'perc' },
+      reefer_min: { label: 'Reefer minimo \u20ac', valore: '', tipo: 'eur' },
+      adr: { label: 'ADR', valore: '', tipo: 'eur' },
+      seconda_presa: { label: '2\u00aa Presa', valore: '', tipo: 'eur' },
+      notte: { label: 'Supplemento Notte', valore: '', tipo: 'eur' },
+      vgm: { label: 'VGM', valore: '', tipo: 'eur' },
+      fuel_perc: { label: 'Fuel Surcharge %', valore: '', tipo: 'perc' }
+    };
+
+    // Merge defaults con valori salvati
+    Object.keys(defaults).forEach(function(k) {
+      if (add[k] !== undefined) defaults[k].valore = add[k];
+    });
+
+    var righeHtml = '';
+    Object.keys(defaults).forEach(function(k) {
+      var d = defaults[k];
+      righeHtml +=
+        '<tr>' +
+        '<td style="font-weight:bold;color:#555;padding:8px 12px">' + d.label + '</td>' +
+        '<td style="padding:8px 12px">' +
+          '<input id="add_' + k + '" type="number" value="' + d.valore + '" step="0.01" min="0" ' +
+            'style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:100px">' +
+          ' <span style="color:#888;font-size:12px">' + (d.tipo === 'perc' ? '%' : '\u20ac') + '</span>' +
+        '</td>' +
+        '</tr>';
+    });
+
+    var css =
+      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}' +
+      '#topbar{background:#c0392b;color:white;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}' +
+      '#topbar h2{margin:0;font-size:15px}' +
+      'table{width:100%;border-collapse:collapse;margin:20px}' +
+      'tr:hover td{background:#fde8e8}' +
+      'input:focus{outline:none;border-color:#c0392b!important;box-shadow:0 0 0 2px rgba(192,57,43,.15)}';
+
+    var popup = window.open('', 'gcc_addizionali', 'width=480,height=560,scrollbars=no,resizable=yes');
+    popup.document.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Addizionali Listino<\/title>' +
+      '<style>' + css + '<\/style><\/head><body>' +
+      '<div id="topbar">' +
+        '<h2>&#x2795; Addizionali Listino Base<\/h2>' +
+        '<button onclick="salva()" style="padding:7px 18px;border:none;border-radius:5px;cursor:pointer;background:#27ae60;color:white;font-weight:bold;font-size:13px">&#x1F4BE; Salva<\/button>' +
+      '<\/div>' +
+      '<table>' + righeHtml + '<\/table>' +
+      '<scr' + 'ipt>' +
+        'var _LS=' + JSON.stringify(LS_ADDIZIONALI) + ';' +
+        'var _GIST_ID=' + JSON.stringify(GIST_ID) + ';' +
+        'function salva(){' +
+          'var data={};' +
+          'document.querySelectorAll("[id^=add_]").forEach(function(el){' +
+            'var k=el.id.replace("add_","");' +
+            'data[k]=el.value;' +
+          '});' +
+          'localStorage.setItem(_LS,JSON.stringify(data));' +
+          'var tok=localStorage.getItem("tcp_gcc_token");' +
+          'if(tok){' +
+            'fetch("https://api.github.com/gists/"+_GIST_ID,{' +
+              'method:"PATCH",' +
+              'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},' +
+              'body:JSON.stringify({files:{"tcp_addizionali.json":{content:JSON.stringify(data,null,2)}}})' +
+            '}).catch(function(){});' +
+          '}' +
+          'alert("Addizionali salvati!");' +
+          'window.close();' +
+        '}' +
+      '<\/scr' + 'ipt>' +
+      '<\/body><\/html>'
+    );
+    popup.document.close();
   }
 
   // ═══════════════════════════════════════════════

@@ -642,170 +642,179 @@
   function apriGestioneListinoBase() {
     panel.style.display = 'none';
     var raw = localStorage.getItem(LS_LISTINO_BASE);
-    var lsData = raw ? JSON.parse(raw) : { rows: [], loaded_at: null };
+    var lsData = raw ? JSON.parse(raw) : { rows: [] };
     var rows = lsData.rows || [];
 
     var css =
-      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}'+
-      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}'+
-      '#topbar h2{margin:0;font-size:14px;white-space:nowrap}'+
-      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}'+
-      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:220px}'+
-      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}'+
-      '#btn-carica{background:#27ae60;color:white}'+
-      '#btn-export{background:#16a085;color:white}'+
-      '#btn-clear{background:#c0392b;color:white}'+
-      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}'+
-      'table{width:100%;border-collapse:collapse;font-size:11px}'+
-      'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}'+
-      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}'+
-      'tr:hover td{background:#f5eef8}'+
-      '.tc{color:#8e44ad;font-weight:bold}'+
-      '.tna{color:#ddd}'+
-      '#nrows{font-size:11px;color:#888;margin-top:8px}'+
-      '.bd{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
+      'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}' +
+      '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}' +
+      '#topbar h2{margin:0;font-size:14px}' +
+      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}' +
+      '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:220px}' +
+      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}' +
+      '#btn-carica{background:#27ae60;color:white}' +
+      '#btn-export{background:#16a085;color:white}' +
+      '#btn-clear{background:#c0392b;color:white}' +
+      '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}' +
+      'table{width:100%;border-collapse:collapse;font-size:11px}' +
+      'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}' +
+      'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}' +
+      'tr:hover td{background:#f5eef8}' +
+      '#nrows{font-size:11px;color:#888;margin-top:8px}' +
+      '.btn-del{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
 
-    var scriptData =
-      'var _rows='+JSON.stringify(rows)+';'+
-      'var _LS='+JSON.stringify(LS_LISTINO_BASE)+';'+
+    // Tutto il JS del popup in un unico blocco scriptLogic
+    var scriptLogic =
+      'var _rows=' + JSON.stringify(rows) + ';' +
+      'var _LS=' + JSON.stringify(LS_LISTINO_BASE) + ';' +
 
-      'function renderTable(){'+
-        'var filter=(document.getElementById("search").value||"").toLowerCase();'+
-        'var html="";var count=0;'+
-        '_rows.forEach(function(r,i){'+
-          'var s=[r.porto,r.localita,r.provincia,r.cap].join(" ").toLowerCase();'+
-          'if(filter&&!s.includes(filter))return;'+
-          'count++;'+
-          'function v(f){return(r[f]||"");}'+
-          'function tc(f){return r[f]?"<td style=\"color:#8e44ad;font-weight:bold\">"+r[f]+"</td>":"<td style=\"color:#ddd\">-</td>";}'+
-          'html+="<tr>";'+
-          'html+="<td style=\\\"font-weight:bold;color:#8e44ad\\\">"+v("porto").toUpperCase()+"</td>";'+
-          'html+="<td>"+v("cap")+"</td>";'+
-          'html+="<td>"+v("provincia")+"</td>";'+
-          'html+="<td style=\\\"font-weight:bold\\\">"+v("localita")+"</td>";'+
-          'html+="<td>"+v("km")+"</td>";'+
-          'html+=tc("costo_20");html+=tc("costo_40");html+=tc("costo_hc");'+
-          'html+=tc("reefer");html+=tc("adr");html+=tc("seconda_presa");'+
-          'html+=tc("soste");html+=tc("notte");html+=tc("vgm");'+
-          'html+="<td><button onclick=\'cancellaRiga("+i+")\' style=\'padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px\'>&#x1F5D1;</button></td>";'+
-          'html+="</tr>";'+
-        '});'+
-        'document.getElementById("tbody").innerHTML=html;'+
-        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" tariffe";'+
-      '}'+
+      'function salvaLocale(){' +
+        'try{' +
+          'var d=JSON.parse(localStorage.getItem(_LS)||"{}");' +
+          'd.rows=_rows;d.loaded_at=new Date().toISOString();' +
+          'localStorage.setItem(_LS,JSON.stringify(d));' +
+        '}catch(e){}' +
+      '}' +
 
-      'function cancellaRiga(idx){'+
-        'if(!confirm("Cancellare questa riga dal listino base?"))return;'+
-        '_rows.splice(idx,1);'+
-        'salvaLocale();renderTable();'+
-        'pushGistBase(_rows);'+
-      '}'+
+      'function pushGistBase(rows){' +
+        'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;' +
+        'fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{' +
+          'method:"PATCH",' +
+          'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},' +
+          'body:JSON.stringify({files:{"tcp_listino_base.json":{content:' +
+            'JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})' +
+        '}).catch(function(){});' +
+      '}' +
 
-      'function salvaLocale(){'+
-        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");d.rows=_rows;d.loaded_at=new Date().toISOString();localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}'+
-      '}'+
+      'function renderTable(){' +
+        'var filter=(document.getElementById("search").value||"").toLowerCase();' +
+        'var html="";var count=0;' +
+        '_rows.forEach(function(r,i){' +
+          'var s=[r.porto,r.localita,r.provincia,r.cap].join(" ").toLowerCase();' +
+          'if(filter&&!s.includes(filter))return;' +
+          'count++;' +
+          'function v(f){return(r[f]||"");}' +
+          'html+="<tr>";' +
+          'html+="<td style=\"font-weight:bold;color:#8e44ad\">"+v("porto").toUpperCase()+"</td>";' +
+          'html+="<td>"+v("cap")+"</td>";' +
+          'html+="<td>"+v("provincia")+"</td>";' +
+          'html+="<td style=\"font-weight:bold\">"+v("localita")+"</td>";' +
+          'html+="<td>"+v("km")+"</td>";' +
+          'html+="<td style=\"color:#27ae60;font-weight:bold\">"+v("costo_20")+"</td>";' +
+          'html+="<td style=\"color:#27ae60;font-weight:bold\">"+v("costo_40")+"</td>";' +
+          'html+="<td><button class=\"btn-del\" data-i=\""+i+"\">&#x1F5D1;</button></td>";' +
+          'html+="</tr>";' +
+        '});' +
+        'document.getElementById("tbody").innerHTML=html;' +
+        'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" righe";' +
+      '}' +
 
-      'function pushGistBase(rows){'+
-        'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;'+
-        'fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{method:"PATCH",'+
-        'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},'+
-        'body:JSON.stringify({files:{"tcp_listino_base.json":{content:JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})'+
-        '}).catch(function(){});'+
-      '}'+
+      'function cancellaRiga(idx){' +
+        'if(!confirm("Cancellare questa riga?"))return;' +
+        '_rows.splice(idx,1);' +
+        'salvaLocale();pushGistBase(_rows);renderTable();' +
+      '}' +
 
-      'document.getElementById("search").addEventListener("input",renderTable);'+
-      'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("bd")){cancellaRiga(parseInt(e.target.dataset.i));}'+
-        'if(e.target.id==="btn-clear"){if(confirm("Cancellare tutto il listino base?")){_rows=[];salvaLocale();pushGistBase([]);renderTable();}}'+
-        'if(e.target.id==="btn-export"){esportaBase();}'+
-      '});'+
+      'function esportaBase(){' +
+        'var hdr=[["porto","cap","provincia","localita","km","costo_20","costo_40"]];' +
+        '_rows.forEach(function(r){' +
+          'hdr.push([r.porto||"",r.cap||"",r.provincia||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||""]);' +
+        '});' +
+        'var wb=XLSX.utils.book_new();' +
+        'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"Listino Base");' +
+        'XLSX.writeFile(wb,"listino_base_"+new Date().toISOString().slice(0,10)+".xlsx");' +
+      '}' +
 
-      'function esportaBase(){'+
-        'var hdr=[["porto","cap","provincia","localita","km","costo_20","costo_40","costo_hc","reefer","adr","seconda_presa","soste","notte","vgm"]];'+
-        '_rows.forEach(function(r){hdr.push([r.porto||"",r.cap||"",r.provincia||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||"",r.costo_hc||"",r.reefer||"",r.adr||"",r.seconda_presa||"",r.soste||"",r.notte||"",r.vgm||""]);});'+
-        'var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"Listino Base");'+
-        'XLSX.writeFile(wb,"listino_base_"+new Date().toISOString().slice(0,10)+".xlsx");'+
-      '}'+
+      'function caricaExcelBase(){' +
+        'var inp=document.createElement("input");' +
+        'inp.type="file";inp.accept=".xlsx,.xls";inp.style.display="none";' +
+        'document.body.appendChild(inp);' +
+        'inp.addEventListener("change",function(){' +
+          'var f=inp.files[0];if(!f)return;' +
+          'var reader=new FileReader();' +
+          'reader.onload=function(ev){' +
+            'function parseWB(){' +
+              'try{' +
+                'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});' +
+                'var nuove=[];' +
+                'var portoMap={' +
+                  '"LIVORNO":"ITLIV","LA SPEZIA":"ITSPE","LASPEZIA":"ITSPE","SPEZIA":"ITSPE",' +
+                  '"GENOVA":"ITGOA","VADO":"ITVAD","TRIESTE":"ITTRS","VENEZIA":"ITVCE",' +
+                  '"RAVENNA":"ITRNA","ANCONA":"ITANC","CIVITAVECCHIA":"ITCVV"' +
+                '};' +
+                'wb.SheetNames.forEach(function(sheetName){' +
+                  'var pRaw=sheetName.trim().toUpperCase().replace(/\s+/g," ");' +
+                  'var porto=portoMap[pRaw]||pRaw;' +
+                  'var sheetRows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:""});' +
+                  'sheetRows.forEach(function(row){' +
+                    'var r2={porto:porto};' +
+                    'Object.keys(row).forEach(function(k){' +
+                      'var kl=k.toLowerCase().trim().replace(/\s+/g," ");' +
+                      'if(kl==="cap"||kl==="c.a.p")r2.cap=String(row[k]);' +
+                      'else if(kl==="pro"||kl==="prov"||kl==="provincia")r2.provincia=String(row[k]);' +
+                      'else if(kl.indexOf("local")===0||kl==="luogo")r2.localita=String(row[k]);' +
+                      'else if(kl.indexOf("dist")===0||kl==="km"||kl==="distanza")r2.km=String(row[k]);' +
+                      'else if(kl==="20")r2.costo_20=String(row[k]);' +
+                      'else if(kl.indexOf("40")===0)r2.costo_40=String(row[k]);' +
+                    '});' +
+                    'if(r2.localita&&r2.localita.trim())nuove.push(r2);' +
+                  '});' +
+                '});' +
+                '_rows=_rows.concat(nuove);' +
+                'salvaLocale();pushGistBase(_rows);renderTable();' +
+                'alert("Importate "+nuove.length+" righe da "+wb.SheetNames.length+" porti.");' +
+              '}catch(err){alert("Errore lettura: "+err.message);}' +
+            '}' +
+            // Carica XLSX se non disponibile
+            'if(typeof XLSX!=="undefined"){parseWB();}' +
+            'else{' +
+              'var s=document.createElement("script");' +
+              's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";' +
+              's.onload=parseWB;document.head.appendChild(s);' +
+            '}' +
+          '};' +
+          'reader.readAsArrayBuffer(f);' +
+        '});' +
+        'inp.click();' +
+      '}' +
+
+      'document.getElementById("search").addEventListener("input",renderTable);' +
+      'document.addEventListener("click",function(e){' +
+        'if(e.target.classList.contains("btn-del")){cancellaRiga(parseInt(e.target.dataset.i));}' +
+        'if(e.target.id==="btn-carica"){caricaExcelBase();}' +
+        'if(e.target.id==="btn-export"){esportaBase();}' +
+        'if(e.target.id==="btn-clear"){' +
+          'if(confirm("Cancellare tutto il listino base?")){' +
+            '_rows=[];salvaLocale();pushGistBase([]);renderTable();' +
+          '}' +
+        '}' +
+      '});' +
 
       'renderTable();';
 
     var thH =
-      '<th>Porto</th><th>CAP</th><th>Prov</th><th>Località</th><th>KM</th>'+
-      '<th>20\'</th><th>40\'</th><th>HC</th><th>Reefer</th><th>ADR</th>'+
-      '<th>2ª Presa</th><th>Soste</th><th>Notte</th><th>VGM</th><th>Del</th>';
+      '<th>Porto</th><th>CAP</th><th>Prov</th><th>Localit\u00e0</th><th>KM A/R</th>' +
+      '<th>20\'</th><th>40\'/HT</th><th>Del</th>';
 
-    var popup = window.open('','gcc_listino_base','width=1280,height=720,scrollbars=yes,resizable=yes');
+    var popup = window.open('', 'gcc_listino_base', 'width=1100,height=720,scrollbars=yes,resizable=yes');
     popup.document.write(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Listino Base<\/title>'+
-      '<style>'+css+'<\/style><\/head><body>'+
-      '<div id="topbar">'+
-        '<h2>&#x1F4CA; Gestisci Listino Base<\/h2>'+
-        '<div id="topbar-right">'+
-          '<input id="search" placeholder="&#x1F50D; Filtra per porto, località...">'+
-          '<button class="btn-top" id="btn-carica">&#x1F4C2; Carica Excel<\/button>'+
-          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta<\/button>'+
-          '<button class="btn-top" id="btn-clear">&#x1F5D1; Svuota<\/button>'+
-        '<\/div>'+
-      '<\/div>'+
-      '<div id="table-wrap">'+
-        '<table><thead><tr>'+thH+'<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>'+
-        '<div id="nrows"><\/div>'+
-      '<\/div>'+
-      '<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr'+'ipt>'+
-      '<scr'+'ipt>'+scriptData+'<\/scr'+'ipt>'+
-      '<scr'+'ipt>'+
-      // Carica Excel multi-sheet
-      '(function(){'+
-        'var inp=document.createElement("input");inp.type="file";inp.accept=".xlsx,.xls";inp.style.display="none";document.body.appendChild(inp);'+
-        'inp.addEventListener("change",function(){'+
-          'var f=inp.files[0];if(!f)return;'+
-          'var r=new FileReader();'+
-          'r.onload=function(ev){'+
-            'try{'+
-              'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});'+
-              'var nuove=[];'+
-              // Ogni sheet = un porto
-              'wb.SheetNames.forEach(function(sheetName){'+
-                'var portoRaw=sheetName.trim().toUpperCase();'+
-                // Mappa nomi sheet → codici porto
-                'var portoMap={"LIVORNO":"ITLIV","GENOVA":"ITGOA","LA SPEZIA":"ITSPE","SPEZIA":"ITSPE",'+
-                  '"VADO":"ITVAD","TRIESTE":"ITTRS","VENEZIA":"ITVCE","RAVENNA":"ITRNA",'+
-                  '"ANCONA":"ITANC","CIVITAVECCHIA":"ITCVV"};'+
-                'var porto=portoMap[portoRaw]||portoRaw;'+
-                'var rows2=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:""});'+
-                'rows2.forEach(function(row){'+
-                  // Normalizza nomi colonne (flessibile)
-                  'var r2={porto:porto};'+
-                  'Object.keys(row).forEach(function(k){'+
-                    'var kl=k.toLowerCase().trim();'+
-                    'if(kl==="cap")r2.cap=String(row[k]);'+
-                    'else if(kl==="pro"||kl==="prov"||kl==="provincia")r2.provincia=String(row[k]);'+
-                    'else if(kl==="localita"||kl==="località"||kl==="luogo")r2.localita=String(row[k]);'+
-                    'else if(kl==="dist km a"||kl==="km"||kl==="dist_km")r2.km=parseFloat(row[k])||0;'+
-                    'else if(kl.startsWith("20"))r2.costo_20=String(row[k]);'+
-                    'else if(kl.startsWith("40"))r2.costo_40=String(row[k]);'+
-                    'else if(kl==="reefer")r2.reefer=String(row[k]);'+
-                    'else if(kl==="adr")r2.adr=String(row[k]);'+
-                    'else if(kl==="2ª presa"||kl==="seconda_presa"||kl==="2a presa")r2.seconda_presa=String(row[k]);'+
-                    'else if(kl==="soste"||kl==="sosta")r2.soste=String(row[k]);'+
-                    'else if(kl==="notte"||kl==="s.notte")r2.notte=String(row[k]);'+
-                    'else if(kl==="vgm")r2.vgm=String(row[k]);'+
-                  '});'+
-                  'if(r2.localita)nuove.push(r2);'+
-                '});'+
-              '});'+
-              '_rows=_rows.concat(nuove);'+
-              'salvaLocale();'+
-              'pushGistBase(_rows);'+
-              'renderTable();'+
-              'alert("Importate "+nuove.length+" tariffe da "+wb.SheetNames.length+" porti.");'+
-            '}catch(err){alert("Errore lettura: "+err.message);}'+
-          '};'+
-          'r.readAsArrayBuffer(f);'+
-        '});'+
-        'document.getElementById("btn-carica").addEventListener("click",function(){inp.value="";inp.click();});'+
-      '})();'+
-      '<\/scr'+'ipt>'+
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Listino Base<\/title>' +
+      '<style>' + css + '<\/style><\/head><body>' +
+      '<div id="topbar">' +
+        '<h2>&#x1F4CA; Gestisci Listino Base<\/h2>' +
+        '<div id="topbar-right">' +
+          '<input id="search" placeholder="&#x1F50D; Filtra per porto, localit\u00e0...">' +
+          '<button class="btn-top" id="btn-carica">&#x1F4C2; Carica Excel<\/button>' +
+          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta<\/button>' +
+          '<button class="btn-top" id="btn-clear">&#x1F5D1; Svuota<\/button>' +
+        '<\/div>' +
+      '<\/div>' +
+      '<div id="table-wrap">' +
+        '<table><thead><tr>' + thH + '<\/tr><\/thead><tbody id="tbody"><\/tbody><\/table>' +
+        '<div id="nrows"><\/div>' +
+      '<\/div>' +
+      '<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/scr' + 'ipt>' +
+      '<scr' + 'ipt>' + scriptLogic + '<\/scr' + 'ipt>' +
       '<\/body><\/html>'
     );
     popup.document.close();

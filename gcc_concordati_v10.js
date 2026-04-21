@@ -85,7 +85,7 @@
     var rawBase = localStorage.getItem(LS_LISTINO_BASE);
     var infoBase = rawBase ? JSON.parse(rawBase) : null;
     var listinoHtml = info
-      ? '<span style="color:green">&#x2705; '+info.rows.length+' concordati</span>'
+      ? '<span style="color:green">&#x2705; '+((info.rows||[]).length)+' concordati</span>'
       : '<span style="color:#c0392b">&#x274C; Nessun listino</span>';
     var baseHtml = (infoBase && infoBase.rows)
       ? ' &mdash; <span style="color:#8e44ad">&#x1F4CA; '+(infoBase.rows.length)+' prezzi base</span>'
@@ -98,7 +98,7 @@
 
   btn.addEventListener('click', function(e){
     e.stopPropagation();
-    if (panel.style.display==='none'){ aggiornaStato(); panel.style.display='block'; }
+    if (panel.style.display==='none'){ try { aggiornaStato(); } catch(e) { console.warn('GCC aggiornaStato error:', e); } panel.style.display='block'; }
     else panel.style.display='none';
   });
   document.addEventListener('click', function(e){
@@ -247,14 +247,6 @@
     localStorage.setItem(LS_LISTINO, JSON.stringify({ rows:merged, filename:'GCC', loaded_at:new Date().toISOString() }));
     aggiornaStato();
     var content = JSON.stringify({ rows:merged, updated_at:new Date().toISOString() }, null, 2);
-    // Leggi anche gli altri file dal Gist durante il sync
-    fetch('https://api.github.com/gists/' + GIST_ID, {
-      headers: { 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json' }
-    }).then(function(r2){ return r2.json(); }).then(function(gd){
-      var bf = gd.files[GIST_FILE_BASE]; if(bf) { try { localStorage.setItem(LS_LISTINO_BASE, bf.content); } catch(e){} }
-      var vf = gd.files[GIST_FILE_VETT]; if(vf) { try { localStorage.setItem(LS_VETTORI, vf.content); } catch(e){} }
-      var af = gd.files[GIST_FILE_ADD];  if(af) { try { localStorage.setItem(LS_ADDIZIONALI, af.content); } catch(e){} }
-    }).catch(function(){});
     fetch('https://api.github.com/gists/' + GIST_ID, {
       method: 'PATCH',
       headers: { 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
@@ -262,6 +254,12 @@
     })
     .then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    }).then(function(gd) {
+      if (gd && gd.files) {
+        var bf=gd.files[GIST_FILE_BASE]; if(bf&&bf.content){try{var bd=JSON.parse(bf.content);localStorage.setItem(LS_LISTINO_BASE,JSON.stringify(bd));}catch(e){}}
+        var af=gd.files[GIST_FILE_ADD];  if(af&&af.content){try{localStorage.setItem(LS_ADDIZIONALI,af.content);}catch(e){}}
+      }
       var msg = 'Sync completato!\n';
       if (nAggiunte) msg += 'Ricevute: ' + nAggiunte + '\n';
       if (nFuse)     msg += 'Fuse (complementari): ' + nFuse + '\n';

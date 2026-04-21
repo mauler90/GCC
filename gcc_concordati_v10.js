@@ -80,10 +80,12 @@
 
   function aggiornaStato() {
     var raw = localStorage.getItem(LS_LISTINO);
-    var info = raw ? JSON.parse(raw) : null;
+    var info = null;
+    if (raw) { try { info = JSON.parse(raw); } catch(e) { localStorage.removeItem(LS_LISTINO); } }
     var token = localStorage.getItem(LS_TOKEN);
     var rawBase = localStorage.getItem(LS_LISTINO_BASE);
-    var infoBase = rawBase ? JSON.parse(rawBase) : null;
+    var infoBase = null;
+    if (rawBase) { try { infoBase = JSON.parse(rawBase); } catch(e) { localStorage.removeItem(LS_LISTINO_BASE); } }
     var listinoHtml = info
       ? '<span style="color:green">&#x2705; '+((info.rows||[]).length)+' concordati</span>'
       : '<span style="color:#c0392b">&#x274C; Nessun listino</span>';
@@ -200,7 +202,8 @@
       try { remoteRows = JSON.parse(remoteRaw).rows || []; } catch(e) { remoteRows = []; }
 
       var localRaw = localStorage.getItem(LS_LISTINO);
-      var localRows = localRaw ? (JSON.parse(localRaw).rows || []) : [];
+      var localRows = [];
+      if (localRaw) { try { localRows = JSON.parse(localRaw).rows || []; } catch(e) { localStorage.removeItem(LS_LISTINO); } }
 
       var mappaLocali = {};
       localRows.forEach(function(r, i) { mappaLocali[chiaveTratta(r)] = i; });
@@ -257,7 +260,7 @@
       return resp.json();
     }).then(function(gd) {
       if (gd && gd.files) {
-        var bf=gd.files[GIST_FILE_BASE]; if(bf&&bf.content){try{var bd=JSON.parse(bf.content);localStorage.setItem(LS_LISTINO_BASE,JSON.stringify(bd));}catch(e){}}
+        var bf=gd.files[GIST_FILE_BASE]; if(bf&&bf.content){try{var bd=JSON.parse(bf.content);if(bd&&typeof bd==='object')localStorage.setItem(LS_LISTINO_BASE,JSON.stringify(bd));}catch(e){}}
         var af=gd.files[GIST_FILE_ADD];  if(af&&af.content){try{localStorage.setItem(LS_ADDIZIONALI,af.content);}catch(e){}}
       }
       var msg = 'Sync completato!\n';
@@ -549,7 +552,8 @@
   function _eseguiMatchCore(){
     var raw=localStorage.getItem(LS_LISTINO);
     if(!raw){ alert('Nessun listino caricato.'); return; }
-    var listino=JSON.parse(raw).rows;
+    var listino=[];
+    try { listino=JSON.parse(raw).rows||[]; } catch(e) { alert('Listino corrotto, fai un Sync.'); return; }
     var ordini=leggiOrdini();
     if(ordini.length===0){ alert('Nessun ordine trovato. Assicurati che ci siano righe espanse.'); return; }
     var risultati=[];
@@ -640,7 +644,8 @@
   function apriGestioneListinoBase() {
     panel.style.display = 'none';
     var raw = localStorage.getItem(LS_LISTINO_BASE);
-    var lsData = raw ? JSON.parse(raw) : { rows: [] };
+    var lsData = { rows: [] };
+    if (raw) { try { lsData = JSON.parse(raw); } catch(e) { localStorage.removeItem(LS_LISTINO_BASE); } }
     var rows = lsData.rows || [];
 
     var css =
@@ -892,7 +897,8 @@
 
   function apriGestioneListino() {
     var raw = localStorage.getItem(LS_LISTINO);
-    var lsData = raw ? JSON.parse(raw) : { rows:[], filename:'GCC' };
+    var lsData = { rows:[], filename:'GCC' };
+    if (raw) { try { lsData = JSON.parse(raw); } catch(e) { localStorage.removeItem(LS_LISTINO); } }
     var rows = lsData.rows;
     var fname = lsData.filename || 'listino';
     var sugg = raccogliSuggerimenti();

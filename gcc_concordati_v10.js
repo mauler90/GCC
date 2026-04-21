@@ -649,147 +649,121 @@
       'body{font-family:Arial,sans-serif;padding:0;background:#f4f6f8;margin:0}' +
       '#topbar{display:flex;align-items:center;justify-content:space-between;background:#8e44ad;color:white;padding:10px 18px;gap:10px;position:sticky;top:0;z-index:100}' +
       '#topbar h2{margin:0;font-size:14px}' +
-      '#topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}' +
+      '#topbar-right{display:flex;align-items:center;gap:8px}' +
       '#search{padding:6px 10px;border:none;border-radius:5px;font-size:12px;width:220px}' +
-      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap}' +
-      '#btn-carica{background:#27ae60;color:white}' +
-      '#btn-export{background:#16a085;color:white}' +
-      '#btn-clear{background:#c0392b;color:white}' +
+      '.btn-top{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:bold}' +
       '#table-wrap{overflow:auto;padding:14px;height:calc(100vh - 62px);box-sizing:border-box}' +
       'table{width:100%;border-collapse:collapse;font-size:11px}' +
       'th{background:#8e44ad;color:white;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}' +
       'td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap}' +
       'tr:hover td{background:#f5eef8}' +
-      '#nrows{font-size:11px;color:#888;margin-top:8px}' +
-      '.btn-del{padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer;font-size:11px}';
+      '#nrows{font-size:11px;color:#888;margin-top:8px}';
 
-    // Tutto il JS del popup in un unico blocco scriptLogic
     var scriptLogic =
       'var _rows=' + JSON.stringify(rows) + ';' +
       'var _LS=' + JSON.stringify(LS_LISTINO_BASE) + ';' +
 
       'function salvaLocale(){' +
-        'try{' +
-          'var d=JSON.parse(localStorage.getItem(_LS)||"{}");' +
-          'd.rows=_rows;d.loaded_at=new Date().toISOString();' +
-          'localStorage.setItem(_LS,JSON.stringify(d));' +
-        '}catch(e){}' +
+        'try{var d=JSON.parse(localStorage.getItem(_LS)||"{}");' +
+        'd.rows=_rows;d.loaded_at=new Date().toISOString();' +
+        'localStorage.setItem(_LS,JSON.stringify(d));}catch(e){}' +
       '}' +
 
-      'function pushGistBase(rows){' +
+      'function pushGistBase(r){' +
         'var tok=localStorage.getItem("tcp_gcc_token");if(!tok)return;' +
         'fetch("https://api.github.com/gists/93f3fe07c908d94f152c56ad805202f5",{' +
           'method:"PATCH",' +
           'headers:{"Authorization":"token "+tok,"Content-Type":"application/json"},' +
-          'body:JSON.stringify({files:{"tcp_listino_base.json":{content:' +
-            'JSON.stringify({rows:rows,updated_at:new Date().toISOString()},null,2)}}})' +
-        '}).catch(function(){});' +
+          'body:JSON.stringify({files:{"tcp_listino_base.json":{' +
+            'content:JSON.stringify({rows:r,updated_at:new Date().toISOString()},null,2)' +
+          '}}})}).catch(function(){});' +
       '}' +
 
       'function renderTable(){' +
         'var filter=(document.getElementById("search").value||"").toLowerCase();' +
         'var html="";var count=0;' +
         '_rows.forEach(function(r,i){' +
-          'var s=[r.porto,r.localita,r.provincia,r.cap].join(" ").toLowerCase();' +
-          'if(filter&&!s.includes(filter))return;' +
+          'var s=(r.porto||"")+" "+(r.localita||"")+" "+(r.provincia||"")+" "+(r.cap||"");' +
+          'if(filter&&s.toLowerCase().indexOf(filter)===-1)return;' +
           'count++;' +
-          'function v(f){return(r[f]||"");}' +
-          'html+="<tr>";' +
-          'html+="<td style=\"font-weight:bold;color:#8e44ad\">"+v("porto").toUpperCase()+"</td>";' +
-          'html+="<td>"+v("cap")+"</td>";' +
-          'html+="<td>"+v("provincia")+"</td>";' +
-          'html+="<td style=\"font-weight:bold\">"+v("localita")+"</td>";' +
-          'html+="<td>"+v("km")+"</td>";' +
-          'html+="<td style=\"color:#27ae60;font-weight:bold\">"+v("costo_20")+"</td>";' +
-          'html+="<td style=\"color:#27ae60;font-weight:bold\">"+v("costo_40")+"</td>";' +
-          'html+="<td><button class=\"btn-del\" data-i=\""+i+"\">&#x1F5D1;</button></td>";' +
-          'html+="</tr>";' +
+          'function v(f){return r[f]||"";}' +
+          'html+="<tr>" +' +
+            '"<td style=\'font-weight:bold;color:#8e44ad\'>" + v("porto").toUpperCase() + "</td>" +' +
+            '"<td>" + v("cap") + "</td>" +' +
+            '"<td>" + v("provincia") + "</td>" +' +
+            '"<td style=\'font-weight:bold\'>" + v("localita") + "</td>" +' +
+            '"<td>" + v("km") + "</td>" +' +
+            '"<td style=\'color:#27ae60;font-weight:bold\'>" + v("costo_20") + "</td>" +' +
+            '"<td style=\'color:#27ae60;font-weight:bold\'>" + v("costo_40") + "</td>" +' +
+            '"<td><button onclick=\'del(" + i + ")\' style=\'padding:3px 7px;border:none;background:#c0392b;color:white;border-radius:3px;cursor:pointer\'>&#x1F5D1;</button></td>" +' +
+          '"</tr>";' +
         '});' +
         'document.getElementById("tbody").innerHTML=html;' +
         'document.getElementById("nrows").textContent="Visualizzate: "+count+" / "+_rows.length+" righe";' +
       '}' +
 
-      'function cancellaRiga(idx){' +
+      'function del(i){' +
         'if(!confirm("Cancellare questa riga?"))return;' +
-        '_rows.splice(idx,1);' +
-        'salvaLocale();pushGistBase(_rows);renderTable();' +
+        '_rows.splice(i,1);salvaLocale();pushGistBase(_rows);renderTable();' +
       '}' +
 
-      'function esportaBase(){' +
-        'var hdr=[["porto","cap","provincia","localita","km","costo_20","costo_40"]];' +
-        '_rows.forEach(function(r){' +
-          'hdr.push([r.porto||"",r.cap||"",r.provincia||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||""]);' +
+      'function parseEsegui(data){' +
+        'var wb=XLSX.read(new Uint8Array(data),{type:"array"});' +
+        'var nuove=[];' +
+        'var pm={"LIVORNO":"ITLIV","LA SPEZIA":"ITSPE","LASPEZIA":"ITSPE","SPEZIA":"ITSPE",' +
+          '"GENOVA":"ITGOA","VADO":"ITVAD","TRIESTE":"ITTRS","VENEZIA":"ITVCE",' +
+          '"RAVENNA":"ITRNA","ANCONA":"ITANC","CIVITAVECCHIA":"ITCVV"};' +
+        'wb.SheetNames.forEach(function(sn){' +
+          'var pRaw=sn.trim().toUpperCase();' +
+          'var porto=pm[pRaw]||pRaw;' +
+          'XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""}).forEach(function(row){' +
+            'var r={porto:porto};' +
+            'Object.keys(row).forEach(function(k){' +
+              'var kl=k.toLowerCase().trim();' +
+              'if(kl==="cap")r.cap=String(row[k]);' +
+              'else if(kl==="pro"||kl==="prov"||kl==="provincia")r.provincia=String(row[k]);' +
+              'else if(kl.indexOf("local")===0||kl==="luogo")r.localita=String(row[k]);' +
+              'else if(kl.indexOf("dist")===0||kl==="km")r.km=String(row[k]);' +
+              'else if(kl==="20")r.costo_20=String(row[k]);' +
+              'else if(kl.indexOf("40")===0)r.costo_40=String(row[k]);' +
+            '});' +
+            'if(r.localita&&r.localita.trim())nuove.push(r);' +
+          '});' +
         '});' +
+        '_rows=_rows.concat(nuove);' +
+        'salvaLocale();pushGistBase(_rows);renderTable();' +
+        'alert("Importate "+nuove.length+" righe da "+wb.SheetNames.length+" porti.");' +
+      '}' +
+
+      'function carica(){' +
+        'var f=document.getElementById("inp-file").files[0];if(!f)return;' +
+        'var reader=new FileReader();' +
+        'reader.onload=function(ev){' +
+          'if(typeof XLSX!=="undefined"){parseEsegui(ev.target.result);}' +
+          'else{' +
+            'var s=document.createElement("script");' +
+            's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";' +
+            's.onload=function(){parseEsegui(ev.target.result);};' +
+            'document.head.appendChild(s);' +
+          '}' +
+        '};' +
+        'reader.readAsArrayBuffer(f);' +
+      '}' +
+
+      'function esporta(){' +
+        'var hdr=[["porto","cap","provincia","localita","km","costo_20","costo_40"]];' +
+        '_rows.forEach(function(r){hdr.push([r.porto||"",r.cap||"",r.provincia||"",r.localita||"",r.km||"",r.costo_20||"",r.costo_40||""]);});' +
         'var wb=XLSX.utils.book_new();' +
         'XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hdr),"Listino Base");' +
         'XLSX.writeFile(wb,"listino_base_"+new Date().toISOString().slice(0,10)+".xlsx");' +
       '}' +
 
-      'function caricaExcelBase(){' +
-        'var inp=document.createElement("input");' +
-        'inp.type="file";inp.accept=".xlsx,.xls";inp.style.display="none";' +
-        'document.body.appendChild(inp);' +
-        'inp.addEventListener("change",function(){' +
-          'var f=inp.files[0];if(!f)return;' +
-          'var reader=new FileReader();' +
-          'reader.onload=function(ev){' +
-            'function parseWB(){' +
-              'try{' +
-                'var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});' +
-                'var nuove=[];' +
-                'var portoMap={' +
-                  '"LIVORNO":"ITLIV","LA SPEZIA":"ITSPE","LASPEZIA":"ITSPE","SPEZIA":"ITSPE",' +
-                  '"GENOVA":"ITGOA","VADO":"ITVAD","TRIESTE":"ITTRS","VENEZIA":"ITVCE",' +
-                  '"RAVENNA":"ITRNA","ANCONA":"ITANC","CIVITAVECCHIA":"ITCVV"' +
-                '};' +
-                'wb.SheetNames.forEach(function(sheetName){' +
-                  'var pRaw=sheetName.trim().toUpperCase().replace(/\s+/g," ");' +
-                  'var porto=portoMap[pRaw]||pRaw;' +
-                  'var sheetRows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:""});' +
-                  'sheetRows.forEach(function(row){' +
-                    'var r2={porto:porto};' +
-                    'Object.keys(row).forEach(function(k){' +
-                      'var kl=k.toLowerCase().trim().replace(/\s+/g," ");' +
-                      'if(kl==="cap"||kl==="c.a.p")r2.cap=String(row[k]);' +
-                      'else if(kl==="pro"||kl==="prov"||kl==="provincia")r2.provincia=String(row[k]);' +
-                      'else if(kl.indexOf("local")===0||kl==="luogo")r2.localita=String(row[k]);' +
-                      'else if(kl.indexOf("dist")===0||kl==="km"||kl==="distanza")r2.km=String(row[k]);' +
-                      'else if(kl==="20")r2.costo_20=String(row[k]);' +
-                      'else if(kl.indexOf("40")===0)r2.costo_40=String(row[k]);' +
-                    '});' +
-                    'if(r2.localita&&r2.localita.trim())nuove.push(r2);' +
-                  '});' +
-                '});' +
-                '_rows=_rows.concat(nuove);' +
-                'salvaLocale();pushGistBase(_rows);renderTable();' +
-                'alert("Importate "+nuove.length+" righe da "+wb.SheetNames.length+" porti.");' +
-              '}catch(err){alert("Errore lettura: "+err.message);}' +
-            '}' +
-            // Carica XLSX se non disponibile
-            'if(typeof XLSX!=="undefined"){parseWB();}' +
-            'else{' +
-              'var s=document.createElement("script");' +
-              's.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";' +
-              's.onload=parseWB;document.head.appendChild(s);' +
-            '}' +
-          '};' +
-          'reader.readAsArrayBuffer(f);' +
-        '});' +
-        'inp.click();' +
+      'function svuota(){' +
+        'if(!confirm("Cancellare tutto il listino base?"))return;' +
+        '_rows=[];salvaLocale();pushGistBase([]);renderTable();' +
       '}' +
 
       'document.getElementById("search").addEventListener("input",renderTable);' +
-      'document.addEventListener("click",function(e){' +
-        'if(e.target.classList.contains("btn-del")){cancellaRiga(parseInt(e.target.dataset.i));}' +
-        'if(e.target.id==="btn-carica"){caricaExcelBase();}' +
-        'if(e.target.id==="btn-export"){esportaBase();}' +
-        'if(e.target.id==="btn-clear"){' +
-          'if(confirm("Cancellare tutto il listino base?")){' +
-            '_rows=[];salvaLocale();pushGistBase([]);renderTable();' +
-          '}' +
-        '}' +
-      '});' +
-
       'renderTable();';
 
     var thH =
@@ -803,10 +777,14 @@
       '<div id="topbar">' +
         '<h2>&#x1F4CA; Gestisci Listino Base<\/h2>' +
         '<div id="topbar-right">' +
-          '<input id="search" placeholder="&#x1F50D; Filtra per porto, localit\u00e0...">' +
-          '<button class="btn-top" id="btn-carica">&#x1F4C2; Carica Excel<\/button>' +
-          '<button class="btn-top" id="btn-export">&#x1F4BE; Esporta<\/button>' +
-          '<button class="btn-top" id="btn-clear">&#x1F5D1; Svuota<\/button>' +
+          '<input id="search" placeholder="&#x1F50D; Filtra...">' +
+          // Input file nascosto — il label è il bottone visibile
+          '<label class="btn-top" style="background:#27ae60;color:white;cursor:pointer">' +
+            '&#x1F4C2; Carica Excel' +
+            '<input id="inp-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="carica()">' +
+          '<\/label>' +
+          '<button class="btn-top" style="background:#16a085;color:white" onclick="esporta()">&#x1F4BE; Esporta<\/button>' +
+          '<button class="btn-top" style="background:#c0392b;color:white" onclick="svuota()">&#x1F5D1; Svuota<\/button>' +
         '<\/div>' +
       '<\/div>' +
       '<div id="table-wrap">' +

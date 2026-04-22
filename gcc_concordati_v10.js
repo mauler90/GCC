@@ -69,13 +69,13 @@
 
   panel.appendChild(titoloPanel);
   panel.appendChild(statoDiv);
-  panel.appendChild(makeBtn('&#x2601; Sync Listino',         '#2980b9', sincronizza));
-  panel.appendChild(makeBtn('&#x1F4CB; Elenco Concordati',   '#16a085', apriGestioneListino));
-  panel.appendChild(makeBtn('&#x1F50D; Calcola Concordati',  '#27ae60', eseguiMatch));
-  panel.appendChild(makeBtn('&#x1F4CA; Tariffario C.R.T',     '#8e44ad', apriGestioneListinoBase));
-  panel.appendChild(makeBtn('&#x1F69A; Gestisci Vettori',     '#d35400', apriGestioneVettori));
-  panel.appendChild(makeBtn('&#x2795; Addizionali Vettori',   '#c0392b', apriGestioneAddizionali));
-  panel.appendChild(makeBtn('&#x2699; Configura Sync',       '#7f8c8d', apriConfigSync));
+  panel.appendChild(makeBtn('&#x2601; Sync Listino',         '#2980b9', function(){ sincronizza(); }));
+  panel.appendChild(makeBtn('&#x1F4CB; Elenco Concordati',   '#16a085', function(){ apriGestioneListino(); }));
+  panel.appendChild(makeBtn('&#x1F50D; Calcola Concordati',  '#27ae60', function(){ eseguiMatch(); }));
+  panel.appendChild(makeBtn('&#x1F4CA; Tariffario C.R.T',     '#8e44ad', function(){ apriGestioneListinoBase(); }));
+  panel.appendChild(makeBtn('&#x1F69A; Gestisci Vettori',     '#d35400', function(){ apriGestioneVettori(); }));
+  panel.appendChild(makeBtn('&#x2795; Addizionali Vettori',   '#c0392b', function(){ apriGestioneAddizionali(); }));
+  panel.appendChild(makeBtn('&#x2699; Configura Sync',       '#7f8c8d', function(){ apriConfigSync(); }));
   document.body.appendChild(panel);
 
   function aggiornaStato() {

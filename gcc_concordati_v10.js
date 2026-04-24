@@ -1002,35 +1002,18 @@
       '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
       '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
 
-    // ── Raggruppa mancanti per tratta + equip ──
-    // REGOLA: mGruppiM array e data-mgi nell'HTML costruiti dallo stesso forEach
-    var mGruppiM = [];
-    (function(){
-      var mappa = {};
-      mancanti.forEach(function(r){
-        var ct = r.containerType;
-        var eqKey = ct.size + (ct.isHC ? 'hc' : '');
-        var mKey = [norm(r.indirizzi[0]||''), norm(r.indirizzi[1]||''),
-                    norm(r.delivery_place), norm(r.porto),
-                    norm(r.traffic), norm(r.committente), eqKey].join('||');
-        if (!mappa[mKey]) {
-          mappa[mKey] = {
-            mKey: mKey,
-            equip: equipLabel(ct), containerType: ct,
-            indirizzi: r.indirizzi, delivery_place: r.delivery_place,
-            committente: r.committente, traffic: r.traffic, porto: r.porto,
-            containers: []
-          };
-          mGruppiM.push(mappa[mKey]);
-        }
-        mappa[mKey].containers.push(r);
-      });
-    })();
-
+    // thCols per mancanti: invariato da v9.1
     var thCols =
-      '<th>Containers</th><th>Equip.</th><th>Indirizzi</th><th>Delivery Place</th>' +
-      '<th>Committente</th><th>Traffic</th><th>Porto</th>' +
-      '<th>Costo</th><th>Note</th><th>Validit\u00e0</th><th class="no-print">Azioni</th>';
+      '<th>LEF / Order ID</th><th>Indirizzi</th><th>Delivery Place</th>' +
+      '<th>Committente</th><th>Traffic</th><th>Container Nr</th>' +
+      '<th>Tipo</th><th>Porto</th><th>Costo</th><th>Note</th><th>Validita</th><th class="no-print">Nav</th>';
+
+    function cellLEF(lef, orderId){
+      return '<td>' +
+        '<div style="font-weight:bold;font-size:12px;color:#1a5276">'+(lef||'—')+'</div>' +
+        '<div style="font-size:10px;color:#999;margin-top:1px">'+orderId+'</div>' +
+        '</td>';
+    }
 
     // Genera HTML trovati raggruppati
     var htmlTrovati='';
@@ -1072,35 +1055,28 @@
         '</tr>';
     });
 
+    // mancanti: identico a v9.1
     var htmlMancanti='';
-    mGruppiM.forEach(function(g, mgi){
-      var n = g.containers.length;
-      // Badge lista containers (mostrata in tooltip)
-      var ctrsList = g.containers.map(function(c){ return c.containerNr+(c.lef?' ('+c.lef+')':''); }).join(', ');
+    mancanti.forEach(function(r,idx){
       htmlMancanti+=
-        '<tr id="mrow_'+mgi+'">'+
-        '<td>'+
-          '<span title="'+ctrsList.replace(/"/g,'&quot;')+'" '+
-            'style="display:inline-block;background:#c0392b;color:white;font-weight:bold;'+
-            'font-size:11px;padding:2px 10px;border-radius:5px;white-space:nowrap;cursor:help">'+
-          '&#x1F4E6; '+n+(n===1?' container':' containers')+
-          '</span>'+
-        '</td>'+
-        '<td><span style="display:inline-block;background:#fde8e8;color:#c0392b;'+
-          'font-weight:bold;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap">'+
-          g.equip+'</span></td>'+
-        '<td>'+g.indirizzi.join(' \u2192 ')+'</td>'+
-        '<td>'+g.delivery_place+'</td>'+
-        '<td>'+g.committente+'</td>'+
-        '<td>'+g.traffic+'</td>'+
-        '<td>'+g.porto.toUpperCase()+'</td>'+
-        '<td id="mcosto_'+mgi+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
-        '<td style="font-size:11px;color:#888" id="mnote_'+mgi+'"></td>'+
-        '<td style="color:#aaa;font-size:11px" id="mdata_'+mgi+'"></td>'+
+        '<tr id="mrow_'+idx+'">'+
+        cellLEF(r.lef, r.orderId)+
+        '<td>'+r.indirizzi.join(' \u2192 ')+'</td>'+
+        '<td>'+r.delivery_place+'</td>'+
+        '<td>'+r.committente+'</td>'+
+        '<td>'+r.traffic+'</td>'+
+        '<td>'+r.containerNr+'</td>'+
+        '<td>'+r.containerTypeRaw+'</td>'+
+        '<td>'+r.porto.toUpperCase()+'</td>'+
+        '<td id="mcosto_'+idx+'" style="color:#c0392b;font-style:italic">-- non trovato --</td>'+
+        '<td style="font-size:11px;color:#888" id="mnote_'+idx+'"></td>'+
+        '<td style="color:#aaa;font-size:11px" id="mdata_'+idx+'"></td>'+
         '<td class="no-print" style="white-space:nowrap">'+
-          '<button data-mgi="'+mgi+'" class="btn-ins" '+
-            'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px">'+
+          '<button data-idx="'+idx+'" class="btn-ins" '+
+            'style="padding:3px 7px;background:#e67e22;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">'+
             '&#x270F;<\/button>'+
+          '<button class="btn-nav-scroll" data-orderid="'+r.orderId+'" data-containernr="'+r.containerNr+'" title="Vai alla riga" '+
+            'style="padding:3px 7px;border:none;background:#2980b9;color:white;border-radius:3px;cursor:pointer;font-size:12px;margin-right:3px">&#x1F50D;<\/button>'+
         '</td>'+
         '</tr>';
     });
@@ -1177,7 +1153,6 @@
     // apriModaleModifica e cancellaRigaTrovati aggiornati per gi
     var scriptData=
       'var _mancanti='+JSON.stringify(mancanti)+';'+
-      'var _mGruppiM='+JSON.stringify(mGruppiM)+';'+
       'var _trovati='+JSON.stringify(trovati)+';'+
       'var _gruppi='+JSON.stringify(gruppiOrdine.map(function(k){ return gruppiMap[k]; }))+';'+
       'var _LS_LISTINO="'+LS_LISTINO+'";'+
@@ -1218,7 +1193,7 @@
       /* ── init fuel% da localStorage ── */
       '(function(){'+
         'var saved="'+fuelPercSalvata+'";'+
-        'if(saved!==undefined&&saved!==""){'+
+        'if(saved){'+
           'document.getElementById("fuel-perc").value=saved;'+
           '_fuelOn=true;'+
           'var t=document.getElementById("fuel-toggle");'+
@@ -1353,7 +1328,7 @@
 
       /* ── delegazione click globale ── */
       'document.addEventListener("click",function(e){'+
-        'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.mgi));}'+
+        'if(e.target.classList.contains("btn-ins")){apriModale(parseInt(e.target.dataset.idx));}'+
         'if(e.target.classList.contains("btn-nav-scroll")){scrollToOrder(e.target.dataset.orderid,e.target.dataset.containernr);}'+
         'if(e.target.classList.contains("btn-modifica")){apriModaleModifica(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
         'if(e.target.classList.contains("btn-cancella")){cancellaRigaTrovati(e.target.dataset.chiave,parseInt(e.target.dataset.gi));}'+
@@ -1395,6 +1370,7 @@
         'if(rigaLS&&(rigaLS.fuel||"").toUpperCase()==="SI"){_mFuelOn=true;}'+
         'var t=document.getElementById("m-fuel-toggle");'+
         't.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'+
+        'var elOp=document.getElementById("f_operatore");if(elOp)elOp.value=(r._edit&&r._edit.operatore)||"";'+
         'document.getElementById("overlay").classList.add("show");'+
       '}'+
 
@@ -1418,23 +1394,20 @@
       '}'+
 
       /* ── apri modale INSERIMENTO (mancanti) ── */
-      'function apriModale(mgi){'
-        +'_idxCorrente=mgi;_mFuelOn=false;'
-        +'_modalMode="nuovo";'
-        +'var g=_mGruppiM[mgi];'
-        +'document.getElementById("modale-titolo").textContent="Inserisci tariffa";'
-        +'var desc=(g.indirizzi||[]).join(" \u2192 ")+" \u2014 "+g.delivery_place+" \u2014 "+g.equip;'
-        +'if(g.containers&&g.containers.length>1)desc+=" ("+g.containers.length+" containers)";'
-        +'document.getElementById("modale-sub").textContent=desc;'
-        +'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note"];'
-        +'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)el.value=(g._edit&&g._edit[f])||"";});'
-        +'var elData=document.getElementById("f_data_validita");'
-        +'elData.value=(g._edit&&g._edit.data_validita)?g._edit.data_validita:_dataOggi;'
-        +'if(g._edit&&g._edit.fuel==="SI"){_mFuelOn=true;}'
-        +'var t=document.getElementById("m-fuel-toggle");'
-        +'t.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'
-        +'var elOp=document.getElementById("f_operatore");if(elOp)elOp.value=(g._edit&&g._edit.operatore)||"";'
-        +'document.getElementById("overlay").classList.add("show");'
+      'function apriModale(idx){'+
+        '_idxCorrente=idx;_mFuelOn=false;'+
+        '_modalMode="nuovo";'+
+        'var r=_mancanti[idx];'+
+        'document.getElementById("modale-titolo").textContent="Inserisci tariffa";'+
+        'document.getElementById("modale-sub").textContent=(r.lef||r.orderId)+" \u2014 "+(r.indirizzi||[]).join(" \u2192 ")+" \u2014 "+r.containerTypeRaw;'+
+        'var flds=["costo_20","costo_40","costo_hc","congestion","extra_stop","s_notte","allaccio_rf","adr","note"];'+
+        'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)el.value=(r._edit&&r._edit[f])||"";});'+
+        'var elData=document.getElementById("f_data_validita");'+
+        'elData.value=(r._edit&&r._edit.data_validita)?r._edit.data_validita:_dataOggi;'+
+        'if(r._edit&&r._edit.fuel==="SI"){_mFuelOn=true;}'+
+        'var t=document.getElementById("m-fuel-toggle");'+
+        't.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'+
+        'document.getElementById("overlay").classList.add("show");'+
       '}'+
 
       'function chiudiModale(){'+
@@ -1453,10 +1426,8 @@
         'flds.forEach(function(f){var el=document.getElementById("f_"+f);if(el)edit[f]=el.value.trim();});'+
         'edit.fuel=_mFuelOn?"SI":"NO";'+
         'edit.operatore=(document.getElementById("f_operatore")||{value:""}).value.trim().toUpperCase();'+
-        'var mgi=_idxCorrente;'+
-        'var g=_mGruppiM[mgi];'+
-        'g._edit=edit;'+
-        'var r=g.containers[0];'+
+        '_mancanti[_idxCorrente]._edit=edit;'+
+        'var r=_mancanti[_idxCorrente];'+
         'var nuovaRiga={'+
           'luogo_1:(r.indirizzi&&r.indirizzi[0])||"",' +
           'luogo_2:(r.indirizzi&&r.indirizzi[1])||"",' +
@@ -1495,10 +1466,10 @@
           'var perc=_fuelOn?(parseFloat(document.getElementById("fuel-perc").value)||0):0;'+
           'fuelStr=perc>0?" <span style=\'color:#e67e22\'>[Fuel: +\u20ac"+(parseFloat(costoB)*perc/100).toFixed(2)+"]</span>":" <span style=\'color:#e67e22\'>[Fuel: ON]</span>";'+
         '}'+
-        'var costoTd=document.getElementById("mcosto_"+mgi);'+
+        'var costoTd=document.getElementById("mcosto_"+_idxCorrente);'+
         'if(costoTd){costoTd.innerHTML=costoB?"<span style=\'font-weight:bold;color:#e67e22\'>\u20ac\u00a0"+costoB+"</span>"+(extras.length?" <span style=\'color:#7f8c8d;font-size:11px\'>"+extras.join(" ")+"</span>":"")+fuelStr:"<span style=\'color:#e67e22;font-style:italic\'>-- inserito --</span>";}'+
-        'var noteTd=document.getElementById("mnote_"+mgi);if(noteTd)noteTd.textContent=edit.note||"";'+
-        'var dataTd=document.getElementById("mdata_"+mgi);if(dataTd)dataTd.textContent=edit.data_validita||"";'+
+        'var noteTd=document.getElementById("mnote_"+_idxCorrente);if(noteTd)noteTd.textContent=edit.note||"";'+
+        'var dataTd=document.getElementById("mdata_"+_idxCorrente);if(dataTd)dataTd.textContent=edit.data_validita||"";'+
         'chiudiModale();'+
       '}'+
 
@@ -1597,7 +1568,7 @@
           htmlTrovatiSection+
         '<\/div>'+
         '<div class="section warn-section">'+
-          '<div class="section-title warn">&#x26A0;&#xFE0F; Costi mancanti ('+mancanti.length+' containers, '+mGruppiM.length+' tratte)<\/div>'+
+          '<div class="section-title warn">&#x26A0;&#xFE0F; Costi mancanti ('+mancanti.length+')<\/div>'+
           htmlMancantiSection+
         '<\/div>'+
       '<\/div>'+

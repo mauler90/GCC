@@ -1218,7 +1218,7 @@
       /* ── init fuel% da localStorage ── */
       '(function(){'+
         'var saved="'+fuelPercSalvata+'";'+
-        'if(saved){'+
+        'if(saved!==undefined&&saved!==""){'+
           'document.getElementById("fuel-perc").value=saved;'+
           '_fuelOn=true;'+
           'var t=document.getElementById("fuel-toggle");'+
@@ -1395,7 +1395,6 @@
         'if(rigaLS&&(rigaLS.fuel||"").toUpperCase()==="SI"){_mFuelOn=true;}'+
         'var t=document.getElementById("m-fuel-toggle");'+
         't.textContent=_mFuelOn?"SI":"NO";t.classList.toggle("on",_mFuelOn);'+
-        'var elOp=document.getElementById("f_operatore");if(elOp)elOp.value=(r._edit&&r._edit.operatore)||"";'+
         'document.getElementById("overlay").classList.add("show");'+
       '}'+
 
